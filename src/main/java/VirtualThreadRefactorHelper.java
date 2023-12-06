@@ -27,8 +27,8 @@ public class VirtualThreadRefactorHelper {
     private static final String CLASS_LOCK_POSTFIX = "ClassLock";
     private static final String OBJECT_LOCK_POSTFIX = "ObjectLock";
     private static final String FIELD_LOCK_POSTFIX = "Lock";
-
     private static final ParserConfiguration.LanguageLevel JAVA_VERSION = ParserConfiguration.LanguageLevel.JAVA_17;
+
     public static void main(String[] args) throws IOException {
 
         var scanner = new Scanner(System.in);
@@ -190,61 +190,73 @@ public class VirtualThreadRefactorHelper {
     private static void refactorSynchronizeBlocks(JavaParser javaParser, List<CompilationUnit> unitList, CompilationUnit cu, TypeDeclaration<?> type, MethodDeclaration method, SynchronizedStmt statement) throws IOException {
         Expression expression = statement.getExpression();
         if(expression instanceof ThisExpr){
-            String lockName = getReentrantLockName(type, false);
-            if(hasNoLock(type.getMembers(), lockName)){
-                FieldDeclaration lockFiled = createReentrantLock(javaParser, cu, type, false);
-                type.getMembers().add(0, lockFiled);
-            }
-            refactorSyncBlockWithLock(method, statement, lockName);
+            refactorSynchronizeBlockUsingThis(javaParser, cu, type, method, statement);
 
         } else if(expression instanceof NameExpr nameExpr){
-            SimpleName lockObjectName = nameExpr.getName();
-            FieldDeclaration lockObjectField = type.getMembers().stream()
-                    .filter(FieldDeclaration.class::isInstance)
-                    .map(FieldDeclaration.class::cast)
-                    .filter(member -> member.getVariables().stream().anyMatch(variableDeclarator -> variableDeclarator.getName().equals(lockObjectName)))
-                    .findFirst().orElseThrow();
-            ClassOrInterfaceType typeOfLockObjectField = (ClassOrInterfaceType) lockObjectField.getElementType();
+            refactorSynchronizeBlockUsingField(javaParser, unitList, cu, type, method, statement, nameExpr);
+        }
+    }
 
-            Optional<CompilationUnit> unitDefinedType = unitList.stream()
-                    .filter(unit -> unit.getTypes().stream()
-                            .anyMatch(typeDeclaration -> typeDeclaration.getName().equals(typeOfLockObjectField.getName())))
-                    .findFirst();
+    private static void refactorSynchronizeBlockUsingThis(JavaParser javaParser, CompilationUnit cu, TypeDeclaration<?> type, MethodDeclaration method, SynchronizedStmt statement){
+        String lockName = getReentrantLockName(type, false);
+        if(hasNoLock(type.getMembers(), lockName)){
+            FieldDeclaration lockFiled = createReentrantLock(javaParser, cu, type, false);
+            type.getMembers().add(0, lockFiled);
+        }
+        refactorSyncBlockWithLock(method, statement, lockName);
+    }
 
-            if(unitDefinedType.isPresent()){
-                TypeDeclaration<?> typeDeclarationOfLockObjectField = unitDefinedType.orElseThrow().getTypes().stream()
-                        .filter(typeDeclaration -> typeDeclaration.getName().equals(typeOfLockObjectField.getName()))
-                        .findFirst()
-                        .orElseThrow();
+    private static void refactorSynchronizeBlockUsingField(JavaParser javaParser, List<CompilationUnit> unitList, CompilationUnit cu, TypeDeclaration<?> type, MethodDeclaration method, SynchronizedStmt statement, NameExpr nameExpr) throws IOException {
+        SimpleName lockObjectName = nameExpr.getName();
+        FieldDeclaration lockObjectField = type.getMembers().stream()
+                .filter(FieldDeclaration.class::isInstance)
+                .map(FieldDeclaration.class::cast)
+                .filter(member -> member.getVariables().stream().anyMatch(variableDeclarator -> variableDeclarator.getName().equals(lockObjectName)))
+                .findFirst().orElseThrow();
+        ClassOrInterfaceType typeOfLockObjectField = (ClassOrInterfaceType) lockObjectField.getElementType();
 
-                String lockName = getReentrantLockName(typeDeclarationOfLockObjectField, lockObjectField.isStatic());
-                final FieldDeclaration lockFiled;
-                if(hasNoLock(typeDeclarationOfLockObjectField.getMembers(), lockName)){
-                    lockFiled = createReentrantLock(javaParser, cu, typeDeclarationOfLockObjectField, lockObjectField.isStatic());
-                    typeDeclarationOfLockObjectField.getMembers().add(0, lockFiled);
-                } else {
-                    lockFiled = getLock(typeDeclarationOfLockObjectField.getMembers(), lockName);
-                }
-                lockFiled.removeModifier(Modifier.Keyword.PRIVATE);
-                lockFiled.setModifier(Modifier.Keyword.PUBLIC, true);
-                try (FileOutputStream out = new FileOutputStream(getFilePath(unitDefinedType.orElseThrow()))){
-                    out.write(unitDefinedType.toString().getBytes());
-                }
+        Optional<CompilationUnit> unitDefinedType = unitList.stream()
+                .filter(unit -> unit.getTypes().stream()
+                        .anyMatch(typeDeclaration -> typeDeclaration.getName().equals(typeOfLockObjectField.getName())))
+                .findFirst();
 
-                refactorSyncBlockWithLock(method, statement, lockObjectName + "." + lockName);
+        if(unitDefinedType.isPresent()){
+            refactorSynchronizeBlockUsingComponent(javaParser, unitDefinedType.orElseThrow(), typeOfLockObjectField, method, statement, lockObjectName);
+        } else {
+            refactorSynchronizeBlockUsingObject(javaParser, cu, type, method, statement, lockObjectName);
+        }
+    }
 
+    private static void refactorSynchronizeBlockUsingComponent(JavaParser javaParser, CompilationUnit unitDefinedType, ClassOrInterfaceType typeOfLockObjectField, MethodDeclaration method, SynchronizedStmt statement, SimpleName lockObjectName) throws IOException {
+        TypeDeclaration<?> typeDeclarationOfLockObjectField = unitDefinedType.getTypes().stream()
+                .filter(typeDeclaration -> typeDeclaration.getName().equals(typeOfLockObjectField.getName()))
+                .findFirst()
+                .orElseThrow();
 
-            } else {
-                String lockName = getReentrantLockName(lockObjectName.asString());
-                if(hasNoLock(type.getMembers(), lockName)){
-                    FieldDeclaration lockFiled = createReentrantLock(javaParser, cu, lockObjectName.asString());
-                    type.getMembers().add(0, lockFiled);
-                }
-                refactorSyncBlockWithLock(method, statement, lockName);
-            }
-
+        String lockName = getReentrantLockName(typeDeclarationOfLockObjectField, false);
+        final FieldDeclaration lockFiled;
+        if(hasNoLock(typeDeclarationOfLockObjectField.getMembers(), lockName)){
+            lockFiled = createReentrantLock(javaParser, unitDefinedType, typeDeclarationOfLockObjectField, false);
+            typeDeclarationOfLockObjectField.getMembers().add(0, lockFiled);
+        } else {
+            lockFiled = getLock(typeDeclarationOfLockObjectField.getMembers(), lockName);
+        }
+        lockFiled.removeModifier(Modifier.Keyword.PRIVATE);
+        lockFiled.setModifier(Modifier.Keyword.PUBLIC, true);
+        try (FileOutputStream out = new FileOutputStream(getFilePath(unitDefinedType))){
+            out.write(unitDefinedType.toString().getBytes());
         }
 
+        refactorSyncBlockWithLock(method, statement, lockObjectName + "." + lockName);
+    }
+
+    private static void refactorSynchronizeBlockUsingObject(JavaParser javaParser, CompilationUnit cu, TypeDeclaration<?> type, MethodDeclaration method, SynchronizedStmt statement, SimpleName lockObjectName) {
+        String lockName = getReentrantLockName(lockObjectName.asString());
+        if(hasNoLock(type.getMembers(), lockName)){
+            FieldDeclaration lockFiled = createReentrantLock(javaParser, cu, lockObjectName.asString());
+            type.getMembers().add(0, lockFiled);
+        }
+        refactorSyncBlockWithLock(method, statement, lockName);
     }
 
     private static void refactorSyncBlockWithLock(MethodDeclaration method, SynchronizedStmt statement, String lockName){

@@ -139,7 +139,7 @@
           }
       }
       ```
-* Refactor synchronized blocks that lock with a component using a public ReentrantLock of the component.
+* Refactor synchronized blocks that lock with a static/non-static component using a public ReentrantLock of the component.
     * before refactor
       ```java
       class Boo {}
@@ -166,38 +166,6 @@
                   // do something
               } finally{
                   boo.booObjectLock.unlock();
-              }
-            }
-          }
-      }
-      ```
-* Refactor synchronized blocks that lock with a static component using a public static ReentrantLock of the component.
-    * before refactor
-      ```java
-      class Boo {}
-      class Foo {
-          private static Boo boo;
-          private static void hi() {
-              synchronized(boo){
-                  // do something
-              }
-          }
-      }
-      ```
-    * after refactor
-      ```java
-      class Boo {
-          public static ReentrantLock booClassLock = new ReentrantLock();
-      }
-      class Foo{
-          private static Boo boo;
-          private static void hi() {
-            {
-              boo.booClassLock.lock();
-              try{
-                  // do something
-              } finally{
-                  boo.booClassLock.unlock();
               }
             }
           }

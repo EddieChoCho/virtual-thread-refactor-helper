@@ -43,9 +43,6 @@ class ClassesHaveSyncBlocksAndMethods2 {
 
 class StaticComponent {
 
-    public static synchronized void syncMethod() {
-        System.out.println("hello");
-    }
 }
 
 class ClassesHaveSyncBlocksAndMethods3 {
