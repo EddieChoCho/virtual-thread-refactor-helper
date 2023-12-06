@@ -1,6 +1,6 @@
 package level1.level2;
 
-public class ClassesHaveSyncBlocksAndMethods {
+class ClassHasSyncBlocksAndMethods {
 
     public void syncBlock() {
         synchronized(this){
@@ -28,7 +28,8 @@ class NonStaticComponent {
         System.out.println("hello");
     }
 }
-class ClassesHaveSyncBlocksAndMethods2 {
+
+class ClassHasSyncBlockUsingNonStaticComponent {
 
     private NonStaticComponent component;
     public void syncBlock() {
@@ -45,7 +46,7 @@ class StaticComponent {
 
 }
 
-class ClassesHaveSyncBlocksAndMethods3 {
+class ClassHasSyncBlockUsingStaticComponent {
 
     private static StaticComponent component;
     public void syncBlock() {

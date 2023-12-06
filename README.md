@@ -172,11 +172,44 @@
       }
       ```
 
+* Refactor synchronized blocks that lock with a class using a public static ReentrantLock of the class.
+    * before refactor
+      ```java
+      class Boo {}
+      class Foo {
+          private void hi() {
+              synchronized(Boo.class){
+                  // do something
+              }
+          }
+      }
+      ```
+    * after refactor
+      ```java
+      class Boo {
+          public static ReentrantLock booObjectLock = new ReentrantLock();
+      }
+      class Foo{
+          private Boo boo;
+          private void hi() {
+            {
+              Boo.booObjectLock.lock();
+              try{
+                  // do something
+              } finally{
+                  Boo.booObjectLock.unlock();
+              }
+            }
+          }
+      }
+      ```
+
 ## TODO
 
 1. Improve features of refactor synchronized methods/blocks: refactor only if the methods/blocks contain any I/O
    operations.
-2. Add new features to refactor ThreadLocal usage with ScopedValue
+2. Add automation testing
+3. Add new features to refactor ThreadLocal usage with ScopedValue
 
 ## References
 

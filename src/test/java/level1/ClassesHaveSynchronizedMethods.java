@@ -1,6 +1,6 @@
 package level1;
 
-public class ClassesHaveSynchronizedMethods {
+class ClassesHaveStaticAndNonStaticSynchronizedMethods {
 
     private synchronized void hi() {
         System.out.println("hi");
@@ -15,7 +15,7 @@ public class ClassesHaveSynchronizedMethods {
     }
 }
 
-class ClassesHaveSynchronizedMethods2 {
+class ClassesHaveOnlyNonStaticSynchronizedMethods {
 
     private synchronized void hi_2() {
         System.out.println("hi");
