@@ -1,0 +1,9 @@
+services:
+  servive:
+    build:
+      context: .
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./src/test/java:/usr/src/app/test/java
+

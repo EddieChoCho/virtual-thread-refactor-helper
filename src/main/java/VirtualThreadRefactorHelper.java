@@ -25,14 +25,14 @@ public class VirtualThreadRefactorHelper {
     public static void main(String[] args) throws IOException {
 
         var scanner = new Scanner(System.in);
-        logger.info("Please input the projectPath:");
-        var projectPath = scanner.nextLine();
+        logger.info("Please input the project directory:");
+        var projectDirectory = scanner.nextLine();
         ParserConfiguration parserConfiguration = new ParserConfiguration();
         parserConfiguration.setLanguageLevel(JAVA_VERSION);
 
         JavaParser javaParser = new JavaParser(parserConfiguration);
 
-        List<CompilationUnit> unitList = parseJavaFiles(javaParser, projectPath);
+        List<CompilationUnit> unitList = parseJavaFiles(javaParser, projectDirectory);
         for (CompilationUnit cu : unitList) {
             boolean refactored = refactorToSupportVirtualThreads(javaParser, unitList, cu);
             if (refactored) {
@@ -44,7 +44,7 @@ public class VirtualThreadRefactorHelper {
             }
         }
 
-        logger.info("Java file modified successfully.");
+        logger.info("Java files refactored successfully.");
 
 
     }
