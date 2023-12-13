@@ -7,6 +7,7 @@
   <packaging>pom</packaging>
   <modules>
     <module>virtual-thread-refactor-helper-javaParser</module>
+    <module>virtual-thread-refactor-helper-openRewrite</module>
   </modules>
   <dependencies>
     <dependency>
