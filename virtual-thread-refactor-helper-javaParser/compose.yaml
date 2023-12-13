@@ -1,7 +1,7 @@
 services:
   servive:
     build:
-      context: .
+      context: ..
     stdin_open: true
     tty: true
     volumes:
